@@ -88,7 +88,7 @@ export class Gpio {
         return state !== 1;
     }
 
-    public setActiveLow(value: BinaryValue): void {
+    public setActiveLow(): void {
         gpiod.lineSetFlags(this._line, 2);
     }
 
