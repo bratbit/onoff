@@ -1,6 +1,7 @@
 import bindings from 'bindings';
 import { readdirSync } from 'fs';
-const gpiod = bindings({bindings: 'gpiod-wrap', module_root: '../../'});
+import {dn} from './dirname.js';
+const gpiod = bindings({bindings: 'gpiod-wrap', module_root: `${dn}/../..`});
 
 export type High = 1;
 export type Low = 0;

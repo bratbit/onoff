@@ -4,8 +4,8 @@
   "description": "",
   "main": "dist/cjs/index.js",
   "scripts": {
-    "build-esm": "tsc -p tsconfig-esm.json && cp package.json.esm dist/esm/package.json",
-    "build-cjs": "tsc -p tsconfig-cjs.json",
+    "build-esm": "cp dirname-esm.ts.template src/dirname.ts && tsc -p tsconfig.json && cp package.json.esm dist/esm/package.json",
+    "build-cjs": "cp dirname-cjs.ts.template src/dirname.ts && tsc -p tsconfig-cjs.json",
     "build": "npm run build-esm && npm run build-cjs"
   },
   "keywords": [],
