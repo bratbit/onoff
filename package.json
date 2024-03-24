@@ -17,7 +17,8 @@
   },
   "files": [
     "dist",
-    "binding.gyp"
+    "binding.gyp",
+    "src/libgpiod_wrap.c"
   ],
   "devDependencies": {
     "@types/bindings": "^1.5.5",
