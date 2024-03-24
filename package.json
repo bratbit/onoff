@@ -4,7 +4,7 @@
   "description": "",
   "main": "dist/cjs/index.js",
   "scripts": {
-    "build-esm": "tsc -p tsconfig-esm.json && cp package.json.esm dist/esm/",
+    "build-esm": "tsc -p tsconfig-esm.json && cp package.json.esm dist/esm/package.json",
     "build-cjs": "tsc -p tsconfig-cjs.json",
     "build": "npm run build-esm && npm run build-cjs"
   },
@@ -17,7 +17,7 @@
   },
   "files": [
     "dist",
-    "bindings.gyp"
+    "binding.gyp"
   ],
   "devDependencies": {
     "@types/bindings": "^1.5.5",
