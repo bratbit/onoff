@@ -1,0 +1,36 @@
+{
+  "name": "@bratbit/onoff",
+  "version": "0.0.0",
+  "description": "",
+  "main": "dist/cjs/index.js",
+  "scripts": {
+    "build-esm": "tsc -p tsconfig-esm.json && cp package.json.esm dist/esm/",
+    "build-cjs": "tsc -p tsconfig-cjs.json",
+    "build": "npm run build-esm && npm run build-cjs"
+  },
+  "keywords": [],
+  "author": "bratbit",
+  "license": "ISC",
+  "exports": {
+    "import": "./dist/esm/index.js",
+    "require": "./dist/cjs/index.js"
+  },
+  "files": [
+    "dist",
+    "bindings.gyp"
+  ],
+  "devDependencies": {
+    "@types/bindings": "^1.5.5",
+    "@types/node": "^20.11.30",
+    "typescript": "^5.4.3"
+  },
+  "dependencies": {
+    "bindings": "^1.5.0",
+    "node-addon-api": "^8.0.0"
+  },
+  "licenses": [
+    {
+      "type": "MIT"
+    }
+  ]
+}
