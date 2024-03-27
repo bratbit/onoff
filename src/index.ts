@@ -51,7 +51,7 @@ export class Gpio {
         this._chip = Gpio.detectChip();
         this._line = gpiod.chipGetLine(this._chip, this._gpio);
         this._direction = direction;
-        
+
         this.setDirection(this._direction);
 
         if(typeof arg2 === 'object') {
@@ -77,8 +77,45 @@ export class Gpio {
         return gpiod.lineGetValue(this._line);
     }
 
-    public writeSync(value: BinaryValue): Number {
+    public read(): Promise<BinaryValue>;
+    public read(callback: () => void): void;
+    public read(callback?: any): Promise<BinaryValue> | void{
+        let result = this.readSync();
+        if(callback) {
+            callback(result);
+            return;
+        } else {
+            return new Promise((resolve) => {
+                resolve(result);
+                return;
+            });
+        }
+    }
+
+    public writeSync(value: BinaryValue): number {
         return gpiod.lineSetValue(this._line, value);
+    }
+
+    public write(value: BinaryValue): Promise<void>;
+    public write(value: BinaryValue, callback: (err?: Error | null | undefined) => void): void;
+    public write(value: BinaryValue, callback?: (err?: Error | null | undefined) => void): Promise<void> | void {
+        let result = this.writeSync(value);
+        if(result < 0) {
+            let err = new Error(`Failed to write to gpio ${this._gpio}`);
+        }
+        if(callback) {
+            callback(null);
+            return;
+        } else {
+            return new Promise((resolve, reject) => {
+                if(result < 0) {
+                    reject();
+                } else {
+                    resolve();
+                }
+                return;
+            });
+        }
     }
 
     public direction(): Direction {
