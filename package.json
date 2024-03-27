@@ -29,6 +29,14 @@
     "bindings": "^1.5.0",
     "node-addon-api": "^8.0.0"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bratbit/onoff.git"
+  },
+  "homepage": "https://github.com/bratbit/onoff",
+  "bugs": {
+    "url": "https://github.com/bratbit/onoff"
+  },
   "licenses": [
     {
       "type": "MIT"
