@@ -57,7 +57,6 @@ napi_value chipGetLine(napi_env env, napi_callback_info info) {
     int offset;
     napi_get_value_external(env, args[0], (struct gpiod_chip**)&chip);
     napi_get_value_int32(env, args[1], &offset);
-    printf("Line offset %lu\n", offset);
 
     struct gpiod_line *line;
     line = gpiod_chip_get_line (chip, offset);
@@ -76,7 +75,6 @@ napi_value lineRequestOutput(napi_env env, napi_callback_info info) {
     int default_val;
     napi_get_value_external(env, args[0], (struct gpiod_line**)&line);
     napi_get_value_int32(env, args[1], &default_val);
-    printf("%u\n", gpiod_line_offset(line));
     int status = gpiod_line_request_output (line, "onoff", default_val);
 
     napi_value result;
@@ -91,7 +89,6 @@ napi_value lineRequestInput(napi_env env, napi_callback_info info) {
 
     struct gpiod_line *line;
     napi_get_value_external(env, args[0], (struct gpiod_line**)&line);
-    printf("%u\n", gpiod_line_offset(line));
     int status = gpiod_line_request_input (line, "onoff");
 
     napi_value result;
@@ -108,7 +105,6 @@ napi_value lineSetValue(napi_env env, napi_callback_info info) {
     int value;
     napi_get_value_external(env, args[0], (struct gpiod_line**)&line);
     napi_get_value_int32(env, args[1], &value);
-    printf("%u\n", gpiod_line_offset(line));
     int status = gpiod_line_set_value (line, value);
 
     napi_value result;
@@ -123,9 +119,7 @@ napi_value lineGetValue(napi_env env, napi_callback_info info) {
 
     struct gpiod_line *line;
     napi_get_value_external(env, args[0], (struct gpiod_line**)&line);
-    printf("%u\n", gpiod_line_offset(line));
     int as = gpiod_line_active_state(line);
-    printf("Active state is %u\n", as);
     int status = gpiod_line_get_value (line);
 
     napi_value result;
