@@ -17,12 +17,14 @@ export type Options = {
 export type BinaryValue = High | Low;
 
 export class Gpio {
-    static HIGH: High;
-    static LOW: Low;
+    static HIGH: High = 1;
+    static LOW: Low = 0;
     private _gpio: Number;
     private _chip: any;
     private _line: any;
     private _direction: Direction;
+    private _options: Options;
+    private _edge: Edge;
 
     private static detectChip(): any {
         let chip: any = null;
@@ -31,7 +33,6 @@ export class Gpio {
             if (file.match(/gpiochip[0-9]*/)) {
                 const currentChip = gpiod.openChip('/dev/' + file);
                 const label = gpiod.getChipLabel(currentChip);
-                console.log(`Checking chip: ${label}`);
                 const n_lines = gpiod.getNumLines(currentChip);
                 if(label.match(/pinctrl-bcm.*/)) {
                     chip = currentChip;
@@ -42,12 +43,32 @@ export class Gpio {
         return chip;
     }
 
-    constructor(gpio: Number, direction: Direction, edge: Edge, options: Options) {
+    constructor(gpio: Number, direction: Direction);
+    constructor(gpio: Number, direction: Direction, options: Options);
+    constructor(gpio: Number, direction: Direction, edge: Edge, options: Options);
+    constructor(gpio: Number, direction: Direction, arg2?: Edge | Options, arg3?: Options | undefined) {
         this._gpio = gpio;
         this._chip = Gpio.detectChip();
         this._line = gpiod.chipGetLine(this._chip, this._gpio);
         this._direction = direction;
+        
         this.setDirection(this._direction);
+
+        if(typeof arg2 === 'object') {
+            this._options = arg2;
+        } else if (typeof arg3 === 'object'){
+            this._options = arg3;
+        } else {
+            this._options = {};
+        }
+        this.setOptions(this._options);
+
+        if(typeof arg2 === 'string') {
+            this._edge = arg2;
+        } else {
+            this._edge = 'none';
+        }
+
         console.log(this._chip);
         console.log(this._line);
     }
@@ -65,14 +86,10 @@ export class Gpio {
     }
 
     public setDirection(direction: Direction): void {
-        console.log(`High is ${Gpio.HIGH}`);
-        console.log(`Low is ${Gpio.LOW}`);
         if(direction === 'out') {
-            console.log('Setting line to out');
             let status = gpiod.lineRequestOutput(this._line, Gpio.LOW);
             console.log(status);
         } else if(direction === 'in') {
-            console.log('Setting line to in');
             let status = gpiod.lineRequestInput(this._line);
             console.log(status);           
         } else if(direction === 'high') {
@@ -84,12 +101,25 @@ export class Gpio {
 
     public activeLow(): Boolean {
         let state = gpiod.lineActiveState(this._line);
-        console.log(`AL state ${state}`);
         return state !== 1;
     }
 
-    public setActiveLow(): void {
-        gpiod.lineSetFlags(this._line, 2);
+    public setActiveLow(activeLow: boolean): void {
+        if(activeLow) {
+            gpiod.lineSetFlags(this._line, 2);
+        } else {
+            gpiod.lineSetFlags(this._line, 0);
+        }
+    }
+
+    private setOptions(options: Options) {
+        if('activeLow' in options) {
+            if(options.activeLow === true) {
+                this.setActiveLow(true);
+            } else {
+                this.setActiveLow(false);
+            }
+        }
     }
 
 }
