@@ -26,51 +26,42 @@ export class Gpio {
     private _options: Options;
     private _edge: Edge;
 
-    private static detectChip(): any {
-        let chip: any = null;
-
-        readdirSync('/dev').forEach((file) => {
-            if (file.match(/gpiochip[0-9]*/)) {
-                const currentChip = gpiod.openChip('/dev/' + file);
-                const label = gpiod.getChipLabel(currentChip);
-                const n_lines = gpiod.getNumLines(currentChip);
-                if(label.match(/pinctrl-bcm.*/)) {
-                    chip = currentChip;
-                }
-            }
-        });
-
-        return chip;
+    public detectChip(re: string = "pinctrl") {
+        return gpiod.detectChip("pinctrl.*");
     }
 
     constructor(gpio: Number, direction: Direction);
     constructor(gpio: Number, direction: Direction, options: Options);
     constructor(gpio: Number, direction: Direction, edge: Edge, options: Options);
-    constructor(gpio: Number, direction: Direction, arg2?: Edge | Options, arg3?: Options | undefined) {
+    constructor(gpio: Number, direction: Direction, arg2?: Edge | Options | undefined, arg3?: Options | undefined) {
         this._gpio = gpio;
-        this._chip = Gpio.detectChip();
-        this._line = gpiod.chipGetLine(this._chip, this._gpio);
+        this._chip = this.detectChip();
         this._direction = direction;
+        this._options = {};
+        this._edge = 'none';
+        this.configureOptions(arg2, arg3);
+        this.configureEdge(arg2);
+        this._line = gpiod.getLine(this._chip, this._gpio);
+        gpiod.configureLine(this._line, this._gpio, this._direction, this._edge, this._options);
+    }
 
-        this.setDirection(this._direction);
-
+    private configureOptions(arg2: Edge | Options | undefined = undefined, arg3: Options | undefined = undefined) {
         if(typeof arg2 === 'object') {
             this._options = arg2;
         } else if (typeof arg3 === 'object'){
             this._options = arg3;
-        } else {
-            this._options = {};
         }
-        this.setOptions(this._options);
+        if(!("activeLow" in this._options)) this._options.activeLow = false;
+        if(!("debounceTimeout" in this._options)) this._options.debounceTimeout = 0;
+        if(!("reconfigureDirection" in this._options)) this._options.reconfigureDirection = true;
+    }
 
+    private configureEdge(arg2: Edge | Options | undefined = undefined) {
         if(typeof arg2 === 'string') {
             this._edge = arg2;
         } else {
             this._edge = 'none';
         }
-
-        console.log(this._chip);
-        console.log(this._line);
     }
 
     public readSync(): BinaryValue {
@@ -123,40 +114,17 @@ export class Gpio {
     }
 
     public setDirection(direction: Direction): void {
-        if(direction === 'out') {
-            let status = gpiod.lineRequestOutput(this._line, Gpio.LOW);
-            console.log(status);
-        } else if(direction === 'in') {
-            let status = gpiod.lineRequestInput(this._line);
-            console.log(status);           
-        } else if(direction === 'high') {
-            let status = gpiod.lineRequestOutput(this._line, Gpio.HIGH);
-        } else if(direction === 'low') {
-            let status = gpiod.lineRequestOutput(this._line, Gpio.LOW);
-        }
+        this._direction = direction;
+        gpiod.configureLine(this._line, this._gpio, this._direction, this._edge, this._options);
     }
 
     public activeLow(): Boolean {
-        let state = gpiod.lineActiveState(this._line);
-        return state !== 1;
+        return (this._options.activeLow as boolean);
     }
 
     public setActiveLow(activeLow: boolean): void {
-        if(activeLow) {
-            gpiod.lineSetFlags(this._line, 2);
-        } else {
-            gpiod.lineSetFlags(this._line, 0);
-        }
-    }
-
-    private setOptions(options: Options) {
-        if('activeLow' in options) {
-            if(options.activeLow === true) {
-                this.setActiveLow(true);
-            } else {
-                this.setActiveLow(false);
-            }
-        }
+        this._options.activeLow = activeLow;
+        gpiod.configureLine(this._line, this._gpio, this._direction, this._edge, this._options);
     }
 
 }
