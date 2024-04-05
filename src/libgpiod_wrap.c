@@ -98,6 +98,8 @@ void configureDirection(const char* direction, struct gpiod_line_request_config*
     } else if(strncmp("low", direction, strlen("low")) == 0) {
         config->request_type = GPIOD_LINE_REQUEST_DIRECTION_OUTPUT;
         *defaultValue = 0;
+    } else if(strncmp("as-is", direction, strlen("as-is")) == 0) {
+        config->request_type = GPIOD_LINE_REQUEST_DIRECTION_AS_IS;
     }
 }
 #else
@@ -142,7 +144,17 @@ napi_value configureLine(napi_env env, napi_callback_info info) {
     #else
     struct gpiod_line_settings* lineSettings;
     #endif
-    napi_get_value_external(env, args[0], (void**)&line);
+    //napi_get_value_external(env, args[0], (void**)&line);
+
+    uintptr_t linePtr;
+    if(sizeof(uintptr_t) == 32) {
+        napi_get_value_uint32(env, args[0], &linePtr);
+    } else {
+        bool lossless;
+        napi_get_value_bigint_uint64(env, args[0], &linePtr, &lossless);
+    }
+    line = (struct gpiod_line*)linePtr;
+
 
     int offset;
     napi_get_value_int32(env, args[1], &offset);
@@ -160,17 +172,34 @@ napi_value configureLine(napi_env env, napi_callback_info info) {
     napi_get_named_property(env, args[4], "activeLow",  &napiActiveLow);
     napi_get_value_bool(env, napiActiveLow, &activeLow);
 
+    napi_value napiReconfigureDirection;
+    bool reconfigureDirection;
+    napi_get_named_property(env, args[4], "reconfigureDirection",  &napiReconfigureDirection);
+    napi_get_value_bool(env, napiReconfigureDirection, &reconfigureDirection);
+
     #ifdef GPIOD_API
     struct gpiod_line_request_config config;
     int defaultValue = 0;
     config.consumer = "onoff";
+
+    int currentDirection;
+    currentDirection = gpiod_line_direction(line);
+
     configureActiveLow(activeLow, &config);
     if((strncmp("none", edge, strlen("none")) != 0) && (strncmp("in", direction, strlen("in")) == 0)) {
         configureEdge(edge, &config);
     } else {
-        configureDirection(direction, &config, &defaultValue);
+        if((currentDirection == GPIOD_LINE_DIRECTION_OUTPUT) && (strncmp("in", direction, strlen("in")) != 0)) {
+            configureDirection("as-is", &config, NULL);
+        } else {
+            configureDirection(direction, &config, &defaultValue);
+        }
     }
-    gpiod_line_request(line, &config, defaultValue);
+    gpiod_line_release(line);
+    int lineConfigStatus = gpiod_line_request(line, &config, defaultValue);
+    if(lineConfigStatus != 0) {
+        napi_throw_error(env, "EIO", "Line request failed");
+    }
     #else
     #endif
 
@@ -195,7 +224,12 @@ napi_value getLine(napi_env env, napi_callback_info info) {
         line = gpiod_chip_get_line(chip, offset);
 
         napi_value result;
-        napi_create_external(env, line, NULL, NULL, &result);
+        if(sizeof(uintptr_t) == 32) {
+            napi_create_uint32(env, (uintptr_t)line, &result);
+        } else {
+            napi_create_bigint_uint64(env, (uintptr_t)line, &result);
+        }
+        //napi_create_external(env, line, NULL, NULL, &result);
         return result;
     #else
         struct gpiod_line_settings* lineSettings;
@@ -212,14 +246,21 @@ napi_value getLine(napi_env env, napi_callback_info info) {
     #endif
 }
 
-napi_value lineSetValue(napi_env env, napi_callback_info info) {
+napi_value setLineValue(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, NULL, NULL);
 
     struct gpiod_line *line;
     int value;
-    napi_get_value_external(env, args[0], (void**)&line);
+    uintptr_t linePtr;
+    if(sizeof(uintptr_t) == 32) {
+        napi_get_value_uint32(env, args[0], &linePtr);
+    } else {
+        bool lossless;
+        napi_get_value_bigint_uint64(env, args[0], &linePtr, &lossless);
+    }
+    line = (struct gpiod_line*)linePtr;
     napi_get_value_int32(env, args[1], &value);
     int status = gpiod_line_set_value (line, value);
 
@@ -228,15 +269,53 @@ napi_value lineSetValue(napi_env env, napi_callback_info info) {
     return result;
 }
 
-napi_value lineGetValue(napi_env env, napi_callback_info info) {
+napi_value getLineValue(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, NULL, NULL);
 
     struct gpiod_line *line;
+    uintptr_t linePtr;
+    if(sizeof(uintptr_t) == 32) {
+        napi_get_value_uint32(env, args[0], &linePtr);
+    } else {
+        bool lossless;
+        napi_get_value_bigint_uint64(env, args[0], &linePtr, &lossless);
+    }
+    line = (struct gpiod_line*)linePtr;
     napi_get_value_external(env, args[0], (void**)&line);
     gpiod_line_active_state(line);
     int status = gpiod_line_get_value (line);
+
+    napi_value result;
+    napi_create_int32(env, status, &result);
+    return result;
+}
+
+napi_value waitForEvent(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1];
+    napi_get_cb_info(env, info, &argc, args, NULL, NULL);
+
+    struct gpiod_line *line;
+    struct timespec timeout;
+    timeout.tv_sec = 1;
+    timeout.tv_nsec = 0;
+    uintptr_t linePtr;
+    if(sizeof(uintptr_t) == 32) {
+        napi_get_value_uint32(env, args[0], &linePtr);
+    } else {
+        bool lossless;
+        napi_get_value_bigint_uint64(env, args[0], &linePtr, &lossless);
+    }
+    line = (struct gpiod_line*)linePtr;
+    int status = gpiod_line_event_wait(line, &timeout);
+
+    if(status > 0) {
+        struct gpiod_line_event event;
+        gpiod_line_event_read(line, &event);
+    }
+
 
     napi_value result;
     napi_create_int32(env, status, &result);
@@ -252,8 +331,9 @@ napi_value Init(napi_env env, napi_value exports) {
     DECLARE_NAPI_METHOD("detectChip", detectChip),
     DECLARE_NAPI_METHOD("getLine", getLine),
     DECLARE_NAPI_METHOD("configureLine", configureLine),
-    DECLARE_NAPI_METHOD("lineSetValue", lineSetValue),
-    DECLARE_NAPI_METHOD("lineGetValue", lineGetValue)
+    DECLARE_NAPI_METHOD("setLineValue", setLineValue),
+    DECLARE_NAPI_METHOD("getLineValue", getLineValue),
+    DECLARE_NAPI_METHOD("waitForEvent", waitForEvent)
 
   };
   status = napi_define_properties(env, exports, sizeof(descriptor)/sizeof(descriptor[0]), descriptor);
