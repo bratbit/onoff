@@ -78,9 +78,6 @@ export class Gpio {
     }
     
     public readSync(): BinaryValue {
-        if(this._worker !== undefined) {
-            this._worker.postMessage('hello fuckers');
-        }
         return gpiod.getLineValue(this._line);
     }
     
