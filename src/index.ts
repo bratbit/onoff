@@ -198,5 +198,8 @@ export class Gpio {
         this._watchers = [];
         this.stopInterruptHandler();
     }
+
+    public unexport(): void {
+    }
     
 }
