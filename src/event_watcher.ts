@@ -6,11 +6,13 @@ const gpiod = bindings({bindings: 'gpiod-wrap', module_root: `${dn}/../..`});
 function watchForEvent() {
     let line = workerData;
     while(true) {
+        setTimeout(() => {}, 0);
         let status = gpiod.waitForEvent(line);
         if(status < 0) {
             throw('Interrupt watcher failed');
         } else if(status === 1) {
-            parentPort?.postMessage(status);
+            let value = gpiod.getLineValue(line);
+            parentPort?.postMessage(value);
         }
     }
 }

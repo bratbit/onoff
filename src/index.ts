@@ -36,6 +36,7 @@ export class Gpio {
     }
 
     constructor(gpio: Number, direction: Direction);
+    constructor(gpio: Number, direction: Direction, edge: Edge);
     constructor(gpio: Number, direction: Direction, options: Options);
     constructor(gpio: Number, direction: Direction, edge: Edge, options: Options);
     constructor(gpio: Number, direction: Direction, arg2?: Edge | Options | undefined, arg3?: Options | undefined) {
@@ -151,10 +152,15 @@ export class Gpio {
     
     private startInterruptHandler(): void {
         if(!this._worker) {
+
+            if(typeof this._options.debounceTimeout !== 'number') {
+                this._options.debounceTimeout = 0;
+            }
+
             this._worker = new Worker(`${dn}/event_watcher.js`, {workerData: this._line});
             const interrupts = fromEvent(this._worker, 'message');
             interrupts.pipe(
-                debounceTime(this._options.debounceTimeout as number)
+                debounceTime(this._options.debounceTimeout)
             ).subscribe((value: any) => {
                 this._watchers.forEach((watcher) => {
                     watcher(null, value);
