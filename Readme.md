@@ -9,7 +9,7 @@ The package strives to offer an API compatible to that of [fivdi/onoff](https://
 ## Instalation
 
 ### Dependencies
-Rapberry Pi OS.
+Raspberry Pi OS.
 ```
 apt install build-essential libgpiod2 libgpiod-dev
 ```
