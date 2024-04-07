@@ -1,1 +1,1 @@
-export const dn = undefined
+export const dn = __dirname
