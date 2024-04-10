@@ -15,7 +15,6 @@
     "linux"
   ],
   "author": "bratbit",
-  "license": "ISC",
   "exports": {
     "import": "./dist/esm/index.js",
     "require": "./dist/cjs/index.js"
@@ -43,9 +42,5 @@
   "bugs": {
     "url": "https://github.com/bratbit/onoff"
   },
-  "licenses": [
-    {
-      "type": "MIT"
-    }
-  ]
+  "license": "MIT"
 }
