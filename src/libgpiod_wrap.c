@@ -147,12 +147,12 @@ napi_value configureLine(napi_env env, napi_callback_info info) {
     //napi_get_value_external(env, args[0], (void**)&line);
 
     uintptr_t linePtr;
-    if(sizeof(uintptr_t) == 32) {
-        napi_get_value_uint32(env, args[0], &linePtr);
-    } else {
-        bool lossless;
-        napi_get_value_bigint_uint64(env, args[0], &linePtr, &lossless);
-    }
+    #if __WORDSIZE == 64
+    bool lossless;
+    napi_get_value_bigint_uint64(env, args[0], &linePtr, &lossless);
+    #else
+    napi_get_value_uint32(env, args[0], &linePtr);
+    #endif
     line = (struct gpiod_line*)linePtr;
 
 
@@ -224,12 +224,12 @@ napi_value getLine(napi_env env, napi_callback_info info) {
         line = gpiod_chip_get_line(chip, offset);
 
         napi_value result;
-        if(sizeof(uintptr_t) == 32) {
-            napi_create_uint32(env, (uintptr_t)line, &result);
-        } else {
-            napi_create_bigint_uint64(env, (uintptr_t)line, &result);
-        }
-        //napi_create_external(env, line, NULL, NULL, &result);
+        #if __WORDSIZE == 64
+        napi_create_bigint_uint64(env, (uintptr_t)line, &result);
+        #else
+        napi_create_uint32(env, (uintptr_t)line, &result);
+        #endif
+
         return result;
     #else
         struct gpiod_line_settings* lineSettings;
@@ -254,12 +254,12 @@ napi_value setLineValue(napi_env env, napi_callback_info info) {
     struct gpiod_line *line;
     int value;
     uintptr_t linePtr;
-    if(sizeof(uintptr_t) == 32) {
-        napi_get_value_uint32(env, args[0], &linePtr);
-    } else {
-        bool lossless;
-        napi_get_value_bigint_uint64(env, args[0], &linePtr, &lossless);
-    }
+    #if __WORDSIZE == 64
+    bool lossless;
+    napi_get_value_bigint_uint64(env, args[0], &linePtr, &lossless);
+    #else
+    napi_get_value_uint32(env, args[0], &linePtr);
+    #endif
     line = (struct gpiod_line*)linePtr;
     napi_get_value_int32(env, args[1], &value);
     int status = gpiod_line_set_value (line, value);
@@ -276,12 +276,12 @@ napi_value getLineValue(napi_env env, napi_callback_info info) {
 
     struct gpiod_line *line;
     uintptr_t linePtr;
-    if(sizeof(uintptr_t) == 32) {
-        napi_get_value_uint32(env, args[0], &linePtr);
-    } else {
-        bool lossless;
-        napi_get_value_bigint_uint64(env, args[0], &linePtr, &lossless);
-    }
+    #if __WORDSIZE == 64
+    bool lossless;
+    napi_get_value_bigint_uint64(env, args[0], &linePtr, &lossless);
+    #else
+    napi_get_value_uint32(env, args[0], &linePtr);
+    #endif
     line = (struct gpiod_line*)linePtr;
     napi_get_value_external(env, args[0], (void**)&line);
     gpiod_line_active_state(line);
@@ -302,12 +302,12 @@ napi_value waitForEvent(napi_env env, napi_callback_info info) {
     timeout.tv_sec = 1;
     timeout.tv_nsec = 0;
     uintptr_t linePtr;
-    if(sizeof(uintptr_t) == 32) {
-        napi_get_value_uint32(env, args[0], &linePtr);
-    } else {
-        bool lossless;
-        napi_get_value_bigint_uint64(env, args[0], &linePtr, &lossless);
-    }
+    #if __WORDSIZE == 64
+    bool lossless;
+    napi_get_value_bigint_uint64(env, args[0], &linePtr, &lossless);
+    #else
+    napi_get_value_uint32(env, args[0], &linePtr);
+    #endif
     line = (struct gpiod_line*)linePtr;
     int status = gpiod_line_event_wait(line, &timeout);
 
