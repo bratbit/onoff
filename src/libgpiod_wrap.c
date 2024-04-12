@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <string.h>
+#include <stdlib.h>
 
 char* getChipPath(char* chipName) {
     char* devPath = "/dev/";
@@ -21,14 +22,14 @@ char* getChipPath(char* chipName) {
 char* getChipLabel(struct gpiod_chip* chip) {
     char * chipLabel;
 
-    #ifdef GPIOD_API
+    #if GPIOD_MAJOR == 1
     chipLabel = (char *) gpiod_chip_label(chip);
 
-    #else
+    #elif GPIOD_MAJOR == 2
     struct gpiod_chip_info* chipInfo;
 
     chipInfo = gpiod_chip_get_info(chip);
-    chipLabel = gpiod_chip_info_get_label(chipInfo);
+    chipLabel = (char *)gpiod_chip_info_get_label(chipInfo);
     gpiod_chip_info_free(chipInfo);
     #endif
 
@@ -86,7 +87,7 @@ napi_value detectChip(napi_env env, napi_callback_info info) {
 
 
 //configure direction
-#ifdef GPIOD_API
+#if GPIOD_MAJOR == 1
 void configureDirection(const char* direction, struct gpiod_line_request_config* config, int* defaultValue) {
     if(strncmp("out", direction, strlen("out")) == 0) {
         config->request_type = GPIOD_LINE_REQUEST_DIRECTION_OUTPUT;
@@ -102,11 +103,26 @@ void configureDirection(const char* direction, struct gpiod_line_request_config*
         config->request_type = GPIOD_LINE_REQUEST_DIRECTION_AS_IS;
     }
 }
-#else
+#elif GPIOD_MAJOR == 2
+void configureDirection(const char* direction, struct gpiod_line_settings* lineSettings) {
+    if(strncmp("out", direction, strlen("out")) == 0) {
+        gpiod_line_settings_set_direction(lineSettings, GPIOD_LINE_DIRECTION_OUTPUT);
+    } else if(strncmp("in", direction, strlen("in")) == 0) {
+        gpiod_line_settings_set_direction(lineSettings, GPIOD_LINE_DIRECTION_INPUT);
+    } else if(strncmp("high", direction, strlen("high")) == 0) {
+        gpiod_line_settings_set_direction(lineSettings, GPIOD_LINE_DIRECTION_OUTPUT);
+        gpiod_line_settings_set_output_value(lineSettings, GPIOD_LINE_VALUE_ACTIVE);
+    } else if(strncmp("low", direction, strlen("low")) == 0) {
+        gpiod_line_settings_set_direction(lineSettings, GPIOD_LINE_DIRECTION_OUTPUT);
+        gpiod_line_settings_set_output_value(lineSettings, GPIOD_LINE_VALUE_INACTIVE);
+    } else if(strncmp("as-is", direction, strlen("as-is")) == 0) {
+        gpiod_line_settings_set_direction(lineSettings, GPIOD_LINE_DIRECTION_AS_IS);
+    }
+}
 #endif
 
 //configure active low
-#ifdef GPIOD_API
+#if GPIOD_MAJOR == 1
 void configureActiveLow(bool activeLow, struct gpiod_line_request_config* config) {
     if(activeLow) {
         config->flags = GPIOD_LINE_REQUEST_FLAG_ACTIVE_LOW;
@@ -114,11 +130,10 @@ void configureActiveLow(bool activeLow, struct gpiod_line_request_config* config
         config->flags = 0;
     }
 }
-#else
 #endif
 
 //configure edge
-#ifdef GPIOD_API
+#if GPIOD_MAJOR == 1
 void configureEdge(const char* edge, struct gpiod_line_request_config* config) {
     if(strncmp("none", edge, strlen("none")) == 0) {
         config->request_type = GPIOD_LINE_REQUEST_DIRECTION_OUTPUT;
@@ -130,7 +145,18 @@ void configureEdge(const char* edge, struct gpiod_line_request_config* config) {
         config->request_type = GPIOD_LINE_REQUEST_EVENT_BOTH_EDGES;
     }
 }
-#else
+#elif GPIOD_MAJOR == 2
+void configureEdge(const char* edge, struct gpiod_line_settings* lineSettings) {
+    if(strncmp("none", edge, strlen("none")) == 0) {
+        gpiod_line_settings_set_edge_detection(lineSettings, GPIOD_LINE_EDGE_NONE);
+    } else if(strncmp("rising", edge, strlen("rising")) == 0) {
+        gpiod_line_settings_set_edge_detection(lineSettings, GPIOD_LINE_EDGE_RISING);
+    } else if(strncmp("falling", edge, strlen("falling")) == 0) {
+        gpiod_line_settings_set_edge_detection(lineSettings, GPIOD_LINE_EDGE_FALLING);
+    } else if(strncmp("both", edge, strlen("both")) == 0) {
+        gpiod_line_settings_set_edge_detection(lineSettings, GPIOD_LINE_EDGE_BOTH);
+    }
+}
 #endif
 
 //configure line
@@ -139,12 +165,11 @@ napi_value configureLine(napi_env env, napi_callback_info info) {
     napi_value args[5];
     napi_get_cb_info(env, info, &argc, args, NULL, NULL);
 
-    #ifdef GPIOD_API
+    #if GPIOD_MAJOR == 1
     struct gpiod_line* line;
-    #else
-    struct gpiod_line_settings* lineSettings;
+    #elif GPIOD_MAJOR == 2
+    struct gpiod_line_request* lineRequest;
     #endif
-    //napi_get_value_external(env, args[0], (void**)&line);
 
     uintptr_t linePtr;
     #if __WORDSIZE == 64
@@ -153,8 +178,12 @@ napi_value configureLine(napi_env env, napi_callback_info info) {
     #else
     napi_get_value_uint32(env, args[0], &linePtr);
     #endif
-    line = (struct gpiod_line*)linePtr;
 
+    #if GPIOD_MAJOR == 1
+    line = (struct gpiod_line*)linePtr;
+    #elif GPIOD_MAJOR == 2
+    lineRequest = (struct gpiod_line_request*)linePtr;
+    #endif
 
     int offset;
     napi_get_value_int32(env, args[1], &offset);
@@ -177,30 +206,55 @@ napi_value configureLine(napi_env env, napi_callback_info info) {
     napi_get_named_property(env, args[4], "reconfigureDirection",  &napiReconfigureDirection);
     napi_get_value_bool(env, napiReconfigureDirection, &reconfigureDirection);
 
-    #ifdef GPIOD_API
-    struct gpiod_line_request_config config;
-    int defaultValue = 0;
-    config.consumer = "onoff";
+    #if GPIOD_MAJOR == 1
+        struct gpiod_line_request_config config;
+        int defaultValue = 0;
+        config.consumer = "onoff";
 
-    int currentDirection;
-    currentDirection = gpiod_line_direction(line);
+        int currentDirection;
+        currentDirection = gpiod_line_direction(line);
 
-    configureActiveLow(activeLow, &config);
-    if((strncmp("none", edge, strlen("none")) != 0) && (strncmp("in", direction, strlen("in")) == 0)) {
-        configureEdge(edge, &config);
-    } else {
-        if((currentDirection == GPIOD_LINE_DIRECTION_OUTPUT) && (strncmp("in", direction, strlen("in")) != 0)) {
-            configureDirection("as-is", &config, NULL);
+        configureActiveLow(activeLow, &config);
+        if((strncmp("none", edge, strlen("none")) != 0) && (strncmp("in", direction, strlen("in")) == 0)) {
+            configureEdge(edge, &config);
         } else {
-            configureDirection(direction, &config, &defaultValue);
+            if((currentDirection == GPIOD_LINE_DIRECTION_OUTPUT) && (strncmp("in", direction, strlen("in")) != 0)) {
+                configureDirection("as-is", &config, NULL);
+            } else {
+                configureDirection(direction, &config, &defaultValue);
+            }
         }
-    }
-    gpiod_line_release(line);
-    int lineConfigStatus = gpiod_line_request(line, &config, defaultValue);
-    if(lineConfigStatus != 0) {
-        napi_throw_error(env, "EIO", "Line request failed");
-    }
-    #else
+        gpiod_line_release(line);
+        int lineConfigStatus = gpiod_line_request(line, &config, defaultValue);
+        if(lineConfigStatus != 0) {
+            napi_throw_error(env, "EIO", "Line request failed");
+        }
+
+    #elif GPIOD_MAJOR == 2
+        struct gpiod_line_settings* lineSettings = gpiod_line_settings_new();
+        gpiod_line_settings_set_active_low(lineSettings, activeLow);
+
+        char *chipName = (char *)gpiod_line_request_get_chip_name(lineRequest);
+        const char* chipPath = getChipPath(chipName);
+        struct gpiod_chip *chip = gpiod_chip_open(chipPath);
+        struct gpiod_line_info *lineInfo = gpiod_chip_get_line_info(chip, offset);
+        int currentDirection = gpiod_line_info_get_direction(lineInfo);
+
+        if((strncmp("none", edge, strlen("none")) != 0) && (strncmp("in", direction, strlen("in")) == 0)) {
+            configureEdge(edge, lineSettings);
+        } else {
+            if((currentDirection == GPIOD_LINE_DIRECTION_OUTPUT) && (strncmp("in", direction, strlen("in")) != 0)) {
+                configureDirection("as-is", lineSettings);
+            } else {
+                configureDirection(direction, lineSettings);
+            }
+        }
+
+
+        struct gpiod_line_config *lineConfig = gpiod_line_config_new();
+
+        gpiod_line_config_add_line_settings(lineConfig, (const unsigned int *)&offset, 1, lineSettings);
+        gpiod_line_request_reconfigure_lines(lineRequest, lineConfig);
     #endif
 
     napi_value result;
@@ -219,7 +273,7 @@ napi_value getLine(napi_env env, napi_callback_info info) {
     int offset;
     napi_get_value_int32(env, args[1], &offset);
 
-    #ifdef GPIOD_API
+    #if GPIOD_MAJOR == 1
         struct gpiod_line *line;
         line = gpiod_chip_get_line(chip, offset);
 
@@ -231,17 +285,24 @@ napi_value getLine(napi_env env, napi_callback_info info) {
         #endif
 
         return result;
-    #else
+    #elif GPIOD_MAJOR == 2
         struct gpiod_line_settings* lineSettings;
         lineSettings = gpiod_line_settings_new();
         gpiod_line_settings_set_direction(lineSettings, GPIOD_LINE_DIRECTION_AS_IS);
         struct gpiod_line_config* lineConfig = gpiod_line_config_new();
-        int test = gpiod_line_config_add_line_settings(lineConfig, &offset, 1, lineSettings);
+        gpiod_line_config_add_line_settings(lineConfig, (const unsigned int *)&offset, 1, lineSettings);
+        struct gpiod_request_config *requestConfig = gpiod_request_config_new();
+        gpiod_request_config_set_consumer(requestConfig, "onoff");
         struct gpiod_line_request* lineRequest;
         lineRequest = gpiod_chip_request_lines(chip, requestConfig, lineConfig);
 
         napi_value result;
-        napi_create_external(env, lineRequest, NULL, NULL, &result);
+        #if __WORDSIZE == 64
+        napi_create_bigint_uint64(env, (uintptr_t)lineRequest, &result);
+        #else
+        napi_create_uint32(env, (uintptr_t)lineRequest, &result);
+        #endif
+
         return result;
     #endif
 }
@@ -250,9 +311,9 @@ napi_value setLineValue(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, NULL, NULL);
-
-    struct gpiod_line *line;
     int value;
+    napi_get_value_int32(env, args[1], &value);
+
     uintptr_t linePtr;
     #if __WORDSIZE == 64
     bool lossless;
@@ -260,9 +321,21 @@ napi_value setLineValue(napi_env env, napi_callback_info info) {
     #else
     napi_get_value_uint32(env, args[0], &linePtr);
     #endif
-    line = (struct gpiod_line*)linePtr;
-    napi_get_value_int32(env, args[1], &value);
-    int status = gpiod_line_set_value (line, value);
+
+    #if GPIOD_MAJOR == 1
+        struct gpiod_line *line;
+        line = (struct gpiod_line*)linePtr;
+        int status = gpiod_line_set_value (line, value);
+
+    #elif GPIOD_MAJOR == 2
+        struct gpiod_line_request* lineRequest;
+        lineRequest = (struct gpiod_line_request*)linePtr;
+
+        int numLines = gpiod_line_request_get_num_requested_lines(lineRequest);
+        unsigned int *offsets = malloc(sizeof(int) * numLines);
+        gpiod_line_request_get_requested_offsets(lineRequest, offsets, numLines);
+        int status = gpiod_line_request_set_value(lineRequest, offsets[0], value);
+    #endif
 
     napi_value result;
     napi_create_int32(env, status, &result);
@@ -274,7 +347,6 @@ napi_value getLineValue(napi_env env, napi_callback_info info) {
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, NULL, NULL);
 
-    struct gpiod_line *line;
     uintptr_t linePtr;
     #if __WORDSIZE == 64
     bool lossless;
@@ -282,10 +354,23 @@ napi_value getLineValue(napi_env env, napi_callback_info info) {
     #else
     napi_get_value_uint32(env, args[0], &linePtr);
     #endif
-    line = (struct gpiod_line*)linePtr;
-    napi_get_value_external(env, args[0], (void**)&line);
-    gpiod_line_active_state(line);
-    int status = gpiod_line_get_value (line);
+
+    #if GPIOD_MAJOR == 1
+        struct gpiod_line *line;
+        line = (struct gpiod_line*)linePtr;
+        napi_get_value_external(env, args[0], (void**)&line);
+        gpiod_line_active_state(line);
+        int status = gpiod_line_get_value (line);
+
+    #elif GPIOD_MAJOR == 2
+        struct gpiod_line_request* lineRequest;
+        lineRequest = (struct gpiod_line_request*)linePtr;
+
+        int numLines = gpiod_line_request_get_num_requested_lines(lineRequest);
+        unsigned int *offsets = malloc(sizeof(int) * numLines);
+        gpiod_line_request_get_requested_offsets(lineRequest, offsets, numLines);
+        int status = gpiod_line_request_get_value(lineRequest, offsets[0]);
+    #endif
 
     napi_value result;
     napi_create_int32(env, status, &result);
@@ -297,10 +382,6 @@ napi_value waitForEvent(napi_env env, napi_callback_info info) {
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, NULL, NULL);
 
-    struct gpiod_line *line;
-    struct timespec timeout;
-    timeout.tv_sec = 1;
-    timeout.tv_nsec = 0;
     uintptr_t linePtr;
     #if __WORDSIZE == 64
     bool lossless;
@@ -308,14 +389,32 @@ napi_value waitForEvent(napi_env env, napi_callback_info info) {
     #else
     napi_get_value_uint32(env, args[0], &linePtr);
     #endif
-    line = (struct gpiod_line*)linePtr;
-    int status = gpiod_line_event_wait(line, &timeout);
 
-    if(status > 0) {
-        struct gpiod_line_event event;
-        gpiod_line_event_read(line, &event);
-    }
+    #if GPIOD_MAJOR == 1
+        struct gpiod_line *line;
+        struct timespec timeout;
+        timeout.tv_sec = 1;
+        timeout.tv_nsec = 0;
+        line = (struct gpiod_line*)linePtr;
+        int status = gpiod_line_event_wait(line, &timeout);
 
+        if(status > 0) {
+            struct gpiod_line_event event;
+            gpiod_line_event_read(line, &event);
+        }
+
+    #elif GPIOD_MAJOR == 2
+        int64_t timeout_ns = 1000000;
+        struct gpiod_line_request* lineRequest;
+        lineRequest = (struct gpiod_line_request*)linePtr;
+        int status = gpiod_line_request_wait_edge_events(lineRequest, timeout_ns);
+
+        if(status > 0) {
+            struct gpiod_edge_event_buffer* buffer = gpiod_edge_event_buffer_new(1);
+            gpiod_line_request_read_edge_events(lineRequest, buffer, 1);
+            gpiod_edge_event_buffer_free(buffer);
+        }
+    #endif
 
     napi_value result;
     napi_create_int32(env, status, &result);
