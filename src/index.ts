@@ -48,7 +48,7 @@ export class Gpio {
         this.configureOptions(arg2, arg3);
         this.configureEdge(arg2);
         this._line = gpiod.getLine(this._chip, this._gpio);
-        gpiod.configureLine(this._line, this._gpio, this._direction, this._edge, this._options);
+        gpiod.configureLine(this._chip, this._line, this._gpio, this._direction, this._edge, this._options);
         this._watchers = [];
         this._worker = undefined;
         

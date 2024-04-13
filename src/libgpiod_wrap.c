@@ -161,9 +161,12 @@ void configureEdge(const char* edge, struct gpiod_line_settings* lineSettings) {
 
 //configure line
 napi_value configureLine(napi_env env, napi_callback_info info) {
-    size_t argc = 5;
-    napi_value args[5];
+    size_t argc = 6;
+    napi_value args[6];
     napi_get_cb_info(env, info, &argc, args, NULL, NULL);
+
+    struct gpiod_chip* chip;
+    napi_get_value_external(env, args[0], (void**)&chip);
 
     #if GPIOD_MAJOR == 1
     struct gpiod_line* line;
@@ -174,9 +177,9 @@ napi_value configureLine(napi_env env, napi_callback_info info) {
     uintptr_t linePtr;
     #if __WORDSIZE == 64
     bool lossless;
-    napi_get_value_bigint_uint64(env, args[0], &linePtr, &lossless);
+    napi_get_value_bigint_uint64(env, args[1], &linePtr, &lossless);
     #else
-    napi_get_value_uint32(env, args[0], &linePtr);
+    napi_get_value_uint32(env, args[1], &linePtr);
     #endif
 
     #if GPIOD_MAJOR == 1
@@ -186,24 +189,24 @@ napi_value configureLine(napi_env env, napi_callback_info info) {
     #endif
 
     int offset;
-    napi_get_value_int32(env, args[1], &offset);
+    napi_get_value_int32(env, args[2], &offset);
 
     char direction[16];
     size_t directionLength;
-    napi_get_value_string_utf8(env, args[2], direction, 12, &directionLength);
+    napi_get_value_string_utf8(env, args[3], direction, 12, &directionLength);
 
     char edge[16];
     size_t edgeLength;
-    napi_get_value_string_utf8(env, args[3], edge, 12, &edgeLength);
+    napi_get_value_string_utf8(env, args[4], edge, 12, &edgeLength);
 
     napi_value napiActiveLow;
     bool activeLow;
-    napi_get_named_property(env, args[4], "activeLow",  &napiActiveLow);
+    napi_get_named_property(env, args[5], "activeLow",  &napiActiveLow);
     napi_get_value_bool(env, napiActiveLow, &activeLow);
 
     napi_value napiReconfigureDirection;
     bool reconfigureDirection;
-    napi_get_named_property(env, args[4], "reconfigureDirection",  &napiReconfigureDirection);
+    napi_get_named_property(env, args[5], "reconfigureDirection",  &napiReconfigureDirection);
     napi_get_value_bool(env, napiReconfigureDirection, &reconfigureDirection);
 
     #if GPIOD_MAJOR == 1
@@ -234,9 +237,6 @@ napi_value configureLine(napi_env env, napi_callback_info info) {
         struct gpiod_line_settings* lineSettings = gpiod_line_settings_new();
         gpiod_line_settings_set_active_low(lineSettings, activeLow);
 
-        char *chipName = (char *)gpiod_line_request_get_chip_name(lineRequest);
-        const char* chipPath = getChipPath(chipName);
-        struct gpiod_chip *chip = gpiod_chip_open(chipPath);
         struct gpiod_line_info *lineInfo = gpiod_chip_get_line_info(chip, offset);
         int currentDirection = gpiod_line_info_get_direction(lineInfo);
 
