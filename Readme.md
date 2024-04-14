@@ -87,40 +87,40 @@ type BinaryValue = High | Low;
 
 #### Gpio(gpio: Number, direction: Direction)</br>Gpio(gpio: Number, direction: Direction, edge: Edge)</br>Gpio(gpio: Number, direction: Direction, options: Options)</br>Gpio(gpio: Number, direction: Direction, edge: Edge, options: Options)
 >Gpio class constructor
-
-@param: gpio  
-Number of the Gpio pin to use.
-
-@param: direction  
-Direction of the line. This can be a string set to:  
-- `in`
-Configure the line as input.
-- `out`
-Configure the line as output.
-- `high`
-Configure the line as output with the initial value set to logical high.
-- `low`
-Configure the line as output with the initial value set to logical low.
-
-@param: edge (optional)  
-Configure the line for edge detection. This can be a string set to:  
-- `none`
-Do not listen for edge events. This is the default if not configured.
-- `rising`
-Listen for rising edge events.
-- `falling`
-Listen for falling edge events.
-- `both`
-Listen for both rising and falling edge events.
-
-@param: options (optional)  
-Object containing the following keys:
-`activeLow`
-If set to `true`, configure the line to have its logical state inversed from the physical state. Default is `false`.
-`debounceTimeout`
-When listening to events, they will be debounced for the ammount of milliseconds specified here. Default is `0`.
-`reconfigureDirection`
-If set to `true` the line will be opened *as-is* without reconfiguring it. Default is `false`.
+>
+>@param: gpio  
+>Number of the Gpio pin to use.
+>
+>@param: direction  
+>Direction of the line. This can be a string set to:  
+>- `in`
+>Configure the line as input.
+>- `out`
+>Configure the line as output.
+>- `high`
+>Configure the line as output with the initial value set to logical high.
+>- `low`
+>Configure the line as output with the initial value set to logical low.
+>
+>@param: edge (optional)  
+>Configure the line for edge detection. This can be a string set to:  
+>- `none`
+>Do not listen for edge events. This is the default if not configured.
+>- `rising`
+>Listen for rising edge events.
+>- `falling`
+>Listen for falling edge events.
+>- `both`
+>Listen for both rising and falling edge events.
+>
+>@param: options (optional)  
+>Object containing the following keys:
+>`activeLow`
+>If set to `true`, configure the line to have its logical state inversed from the physical state. Default is `false`.
+>`debounceTimeout`
+>When listening to events, they will be debounced for the ammount of milliseconds specified here. Default is `0`.
+>`reconfigureDirection`
+>If set to `true` the line will be opened *as-is* without reconfiguring it. Default is `false`.
 
 #### readSync(): BinaryValue
 >Read the line synchronously
