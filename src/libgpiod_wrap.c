@@ -175,7 +175,7 @@ napi_value configureLine(napi_env env, napi_callback_info info) {
     #endif
 
     uintptr_t linePtr;
-    #if __WORDSIZE == 64
+    #if UINTPTR_MAX == UINT64_MAX
     bool lossless;
     napi_get_value_bigint_uint64(env, args[1], &linePtr, &lossless);
     #else
@@ -278,7 +278,7 @@ napi_value getLine(napi_env env, napi_callback_info info) {
         line = gpiod_chip_get_line(chip, offset);
 
         napi_value result;
-        #if __WORDSIZE == 64
+        #if UINTPTR_MAX == UINT64_MAX
         napi_create_bigint_uint64(env, (uintptr_t)line, &result);
         #else
         napi_create_uint32(env, (uintptr_t)line, &result);
@@ -297,7 +297,7 @@ napi_value getLine(napi_env env, napi_callback_info info) {
         lineRequest = gpiod_chip_request_lines(chip, requestConfig, lineConfig);
 
         napi_value result;
-        #if __WORDSIZE == 64
+        #if UINTPTR_MAX == UINT64_MAX
         napi_create_bigint_uint64(env, (uintptr_t)lineRequest, &result);
         #else
         napi_create_uint32(env, (uintptr_t)lineRequest, &result);
@@ -315,7 +315,7 @@ napi_value setLineValue(napi_env env, napi_callback_info info) {
     napi_get_value_int32(env, args[1], &value);
 
     uintptr_t linePtr;
-    #if __WORDSIZE == 64
+    #if UINTPTR_MAX == UINT64_MAX
     bool lossless;
     napi_get_value_bigint_uint64(env, args[0], &linePtr, &lossless);
     #else
@@ -348,7 +348,7 @@ napi_value getLineValue(napi_env env, napi_callback_info info) {
     napi_get_cb_info(env, info, &argc, args, NULL, NULL);
 
     uintptr_t linePtr;
-    #if __WORDSIZE == 64
+    #if UINTPTR_MAX == UINT64_MAX
     bool lossless;
     napi_get_value_bigint_uint64(env, args[0], &linePtr, &lossless);
     #else
@@ -383,7 +383,7 @@ napi_value waitForEvent(napi_env env, napi_callback_info info) {
     napi_get_cb_info(env, info, &argc, args, NULL, NULL);
 
     uintptr_t linePtr;
-    #if __WORDSIZE == 64
+    #if UINTPTR_MAX == UINT64_MAX
     bool lossless;
     napi_get_value_bigint_uint64(env, args[0], &linePtr, &lossless);
     #else
