@@ -200,6 +200,7 @@ export class Gpio {
     }
 
     public unexport(): void {
+        this.unwatchAll();
     }
     
 }
