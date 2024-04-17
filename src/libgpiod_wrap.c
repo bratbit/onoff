@@ -221,12 +221,13 @@ napi_value configureLine(napi_env env, napi_callback_info info) {
         if((strncmp("none", edge, strlen("none")) != 0) && (strncmp("in", direction, strlen("in")) == 0)) {
             configureEdge(edge, &config);
         } else {
-            if((currentDirection == GPIOD_LINE_DIRECTION_OUTPUT) && (strncmp("in", direction, strlen("in")) != 0)) {
+            if((currentDirection == GPIOD_LINE_DIRECTION_OUTPUT) && (strncmp("in", direction, strlen("in")) != 0) && (reconfigureDirection == false)) {
                 configureDirection("as-is", &config, NULL);
             } else {
                 configureDirection(direction, &config, &defaultValue);
             }
         }
+
         gpiod_line_release(line);
         int lineConfigStatus = gpiod_line_request(line, &config, defaultValue);
         if(lineConfigStatus != 0) {
@@ -242,14 +243,13 @@ napi_value configureLine(napi_env env, napi_callback_info info) {
 
         if((strncmp("none", edge, strlen("none")) != 0) && (strncmp("in", direction, strlen("in")) == 0)) {
             configureEdge(edge, lineSettings);
-        } else {
-            if((currentDirection == GPIOD_LINE_DIRECTION_OUTPUT) && (strncmp("in", direction, strlen("in")) != 0)) {
-                configureDirection("as-is", lineSettings);
-            } else {
-                configureDirection(direction, lineSettings);
-            }
         }
-
+        
+        if((currentDirection == GPIOD_LINE_DIRECTION_OUTPUT) && (strncmp("in", direction, strlen("in")) != 0) && (reconfigureDirection == false)) {
+            configureDirection("as-is", lineSettings);
+        } else {
+            configureDirection(direction, lineSettings);
+        }
 
         struct gpiod_line_config *lineConfig = gpiod_line_config_new();
 
