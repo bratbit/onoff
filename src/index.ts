@@ -24,6 +24,10 @@ export type BinaryValue = High | Low;
 export class Gpio {
     static HIGH: High = 1;
     static LOW: Low = 0;
+    static _chipRegex = ".*";
+    static setChipRegex(regex: string): void {
+        Gpio._chipRegex = regex
+    }
     private _gpio: Number;
     private _chip: any;
     private _line: any;
@@ -33,8 +37,8 @@ export class Gpio {
     private _watchers: Array<ValueCallback>;
     private _worker: Worker | undefined;
 
-    public detectChip(re: string = "pinctrl") {
-        return gpiod.detectChip(".*");
+    public detectChip() {
+        return gpiod.detectChip(Gpio._chipRegex);
     }
 
     constructor(gpio: Number, direction: Direction);
@@ -143,8 +147,8 @@ export class Gpio {
         gpiod.configureLine(this._line, this._gpio, this._direction, this._edge, this._options);
     }
 
-    public bias(): Bias {
-        return this._options.bias as Bias;
+    public bias(): Bias | undefined {
+        return this._options.bias;
     }
 
     public setBias(bias: Bias): void {
