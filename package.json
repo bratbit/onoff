@@ -6,7 +6,8 @@
   "scripts": {
     "build-esm": "tsc -p tsconfig.json && echo '{\"type\": \"module\"}' > dist/esm/package.json && cp ./src/dirname-esm.js ./dist/esm/dirname.js",
     "build-cjs": "tsc -p tsconfig-cjs.json",
-    "build": "npm run build-esm && npm run build-cjs"
+    "build": "npm run build-esm && npm run build-cjs",
+    "prepare": "npm run build"
   },
   "keywords": [
     "gpio",

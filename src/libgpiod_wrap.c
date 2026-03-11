@@ -238,6 +238,23 @@ napi_value configureLine(napi_env env, napi_callback_info info) {
         struct gpiod_line_settings* lineSettings = gpiod_line_settings_new();
         gpiod_line_settings_set_active_low(lineSettings, activeLow);
 
+        napi_value napiBias;
+        char bias[16];
+        size_t biasLength;
+        bool hasBias = false;
+        napi_has_named_property(env, args[5], "bias", &hasBias);
+        if (hasBias) {
+            napi_get_named_property(env, args[5], "bias",  &napiBias);
+            napi_get_value_string_utf8(env, napiBias, bias, sizeof(bias), &biasLength);
+            if (strcmp(bias, "pull-up") == 0) {
+                gpiod_line_settings_set_bias(lineSettings, GPIOD_LINE_BIAS_PULL_UP);
+            } else if (strcmp(bias, "pull-down") == 0) {
+                gpiod_line_settings_set_bias(lineSettings, GPIOD_LINE_BIAS_PULL_DOWN);
+            } else if (strcmp(bias, "disable") == 0 || strcmp(bias, "none") == 0) {
+                gpiod_line_settings_set_bias(lineSettings, GPIOD_LINE_BIAS_DISABLED);
+            }
+        }
+
         struct gpiod_line_info *lineInfo = gpiod_chip_get_line_info(chip, offset);
         int currentDirection = gpiod_line_info_get_direction(lineInfo);
 
