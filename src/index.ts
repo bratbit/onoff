@@ -176,6 +176,9 @@ export class Gpio {
                 workerData: this._line,
                 resourceLimits: { maxOldGenerationSizeMb: 32 }
             });
+            this._worker.on('error', (err) => {
+                console.error('[onoff] Worker error:', err.message || err);
+            });
             const interrupts = fromEvent(this._worker, 'message');
             this._interruptSubscription = interrupts.pipe(
                 debounceTime(this._options.debounceTimeout)
