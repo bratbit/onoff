@@ -2,7 +2,7 @@ import bindings from 'bindings';
 import { Worker } from 'worker_threads';
 import { dn } from './dirname.js';
 const gpiod = bindings({ bindings: 'gpiod-wrap', module_root: `${dn}/../..` });
-import { fromEvent, debounceTime } from 'rxjs';
+import { fromEvent, debounceTime, type Subscription } from 'rxjs';
 
 export type High = 1;
 export type Low = 0;
@@ -28,6 +28,7 @@ export class Gpio {
     static setChipRegex(regex: string): void {
         Gpio._chipRegex = regex
     }
+
     private _gpio: Number;
     private _chip: any;
     private _line: any;
@@ -36,6 +37,7 @@ export class Gpio {
     private _edge: Edge;
     private _watchers: Array<ValueCallback>;
     private _worker: Worker | undefined;
+    private _interruptSubscription: Subscription | undefined;
 
     public detectChip() {
         return gpiod.detectChip(Gpio._chipRegex);
@@ -167,30 +169,34 @@ export class Gpio {
 
     private startInterruptHandler(): void {
         if (!this._worker) {
-
             if (typeof this._options.debounceTimeout !== 'number') {
                 this._options.debounceTimeout = 0;
             }
-
-            this._worker = new Worker(`${dn}/event_watcher.js`, { workerData: this._line });
+            this._worker = new Worker(`${dn}/event_watcher.js`, {
+                workerData: this._line,
+                resourceLimits: { maxOldGenerationSizeMb: 32 }
+            });
             const interrupts = fromEvent(this._worker, 'message');
-            interrupts.pipe(
+            this._interruptSubscription = interrupts.pipe(
                 debounceTime(this._options.debounceTimeout)
             ).subscribe((value: any) => {
                 this._watchers.forEach((watcher) => {
                     watcher(null, value);
-                })
+                });
             });
         }
     }
 
     private stopInterruptHandler(): void {
+        if (this._interruptSubscription) {
+            this._interruptSubscription.unsubscribe();
+            this._interruptSubscription = undefined;
+        }
         if (this._worker) {
             this._worker.terminate();
             this._worker = undefined;
         }
     }
-
 
     public watch(callback: ValueCallback): void {
         this._watchers.push(callback);
