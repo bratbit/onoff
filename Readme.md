@@ -52,10 +52,14 @@ type Direction = "in" | "out" | "high" | "low";
 type Edge = "none" | "rising" | "falling" | "both";
 ```
 ```
+type Bias = "pull-up" | "pull-down" | "none" | "disabled";
+```
+```
 type Options = {
     debounceTimeout?: number;
     activeLow?: boolean;
     reconfigureDirection?: boolean;
+    bias?: Bias;
 };
 ```
 ```
@@ -79,6 +83,8 @@ type BinaryValue = High | Low;
 - [setDirection(direction: Direction): void](#setdirectiondirection-direction-void)
 - [edge(): Edge](#edge-edge)
 - [setEdge(edge: Edge): void](#setedgeedge-edge-void)
+- [bias(): Bias](#bias-bias)
+- [setBias(bias: Bias): void](#setbiasbias-bias-void)
 - [activeLow(): boolean](#activelow-boolean)
 - [setActiveLow(invert: boolean): void](#setactivelowinvert-boolean-void)
 - [watch(callback: ValueCallback): void](#watchcallback-valuecallback-void)
@@ -120,7 +126,13 @@ type BinaryValue = High | Low;
 >`debounceTimeout`
 >When listening to events, they will be debounced for the ammount of milliseconds specified here. Default is `0`.
 >`reconfigureDirection`
->If set to `true` the line will be opened *as-is* without reconfiguring it. Default is `false`.
+>If set to `false` the line will be opened *as-is* without reconfiguring it. Default is `false`.
+>`bias` can be configured as
+>- `pull-up` The internal pull-up bias is enabled.
+>- `pull-down` The internal pull-down bias is enabled. 
+>- `disabled` The internal bias is disabled. 
+>- `none` Don’t change the bias setting when applying line config.
+>Default `bias` setting is `none`.
 
 #### readSync(): BinaryValue
 >Read the line synchronously
@@ -177,6 +189,16 @@ type BinaryValue = High | Low;
 >Set the edge detection of the line. The line must be set to `in` for this to take any effect.
 >
 >@param: edge
+
+#### bias(): Bias
+>Get the bias setting of the Gpio object.
+>
+>@return: bias
+
+#### setBias(bias: Bias): void
+>Set the bias of the line.
+>
+>@param: bias
 
 #### activeLow(): boolean
 >Get value of activeLow option of the Gpio object. This will tell you if the line is set to invert logical state.
