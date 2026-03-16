@@ -250,8 +250,10 @@ napi_value configureLine(napi_env env, napi_callback_info info) {
                 gpiod_line_settings_set_bias(lineSettings, GPIOD_LINE_BIAS_PULL_UP);
             } else if (strcmp(bias, "pull-down") == 0) {
                 gpiod_line_settings_set_bias(lineSettings, GPIOD_LINE_BIAS_PULL_DOWN);
-            } else if (strcmp(bias, "disable") == 0 || strcmp(bias, "none") == 0) {
+            } else if (strcmp(bias, "disabled") == 0) {
                 gpiod_line_settings_set_bias(lineSettings, GPIOD_LINE_BIAS_DISABLED);
+            } else {
+                gpiod_line_settings_set_bias(lineSettings, GPIOD_LINE_BIAS_AS_IS);
             }
         }
 
