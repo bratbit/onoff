@@ -8,7 +8,7 @@ export type High = 1;
 export type Low = 0;
 export type Direction = "in" | "out" | "high" | "low";
 export type Edge = "none" | "rising" | "falling" | "both";
-export type Bias = "pull-up" | "pull-down" | "none" | "disable"
+export type Bias = "pull-up" | "pull-down" | "none" | "disabled";
 
 export type Options = {
     debounceTimeout?: number,
@@ -24,9 +24,9 @@ export type BinaryValue = High | Low;
 export class Gpio {
     static HIGH: High = 1;
     static LOW: Low = 0;
-    static _chipRegex = ".*";
-    static setChipRegex(regex: string): void {
-        Gpio._chipRegex = regex
+    static _chipRegex: RegExp = /.*/;
+    static setChipRegex(regex: RegExp): void {
+        Gpio._chipRegex = regex;
     }
 
     private _gpio: Number;
@@ -76,6 +76,7 @@ export class Gpio {
         if (!("activeLow" in this._options)) this._options.activeLow = false;
         if (!("debounceTimeout" in this._options)) this._options.debounceTimeout = 0;
         if (!("reconfigureDirection" in this._options)) this._options.reconfigureDirection = true;
+        if (!("bias" in this._options)) this._options.bias = 'none';
     }
 
     private configureEdge(arg2: Edge | Options | undefined = undefined) {
@@ -149,8 +150,8 @@ export class Gpio {
         gpiod.configureLine(this._line, this._gpio, this._direction, this._edge, this._options);
     }
 
-    public bias(): Bias | undefined {
-        return this._options.bias;
+    public bias(): Bias {
+        return this._options.bias as Bias;
     }
 
     public setBias(bias: Bias): void {
