@@ -12,7 +12,7 @@ The package strives to offer an API compatible to that of [fivdi/onoff](https://
 
 #### Raspberry Pi OS
 ```
-apt install build-essential libgpiod2 libgpiod-dev
+apt install build-essential libgpiod3 libgpiod-dev
 ```
 
 #### Arch Linux

@@ -24,8 +24,8 @@ export type BinaryValue = High | Low;
 export class Gpio {
     static HIGH: High = 1;
     static LOW: Low = 0;
-    static _chipRegex: RegExp = /.*/;
-    static setChipRegex(regex: RegExp): void {
+    static _chipRegex: string = '.*';
+    static setChipRegex(regex: string): void {
         Gpio._chipRegex = regex;
     }
 
