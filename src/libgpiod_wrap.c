@@ -13,6 +13,10 @@ char* getChipPath(char* chipName) {
     char* path;
 
     path = malloc(strlen(devPath) + strlen(chipName) + 1);
+    if(path == NULL) {
+        return NULL;
+    }
+
     strcpy(path, devPath);
     strcat(path, chipName);
 
@@ -20,7 +24,8 @@ char* getChipPath(char* chipName) {
 }
 
 char* getChipLabel(struct gpiod_chip* chip) {
-    char * chipLabel;
+    char * chipLabel = NULL;
+    char *label = NULL;
 
     #if GPIOD_MAJOR == 1
     chipLabel = (char *) gpiod_chip_label(chip);
@@ -29,7 +34,20 @@ char* getChipLabel(struct gpiod_chip* chip) {
     struct gpiod_chip_info* chipInfo;
 
     chipInfo = gpiod_chip_get_info(chip);
-    chipLabel = (char *)gpiod_chip_info_get_label(chipInfo);
+    label = (char *)gpiod_chip_info_get_label(chipInfo);
+    if (label) {
+        size_t len = strlen(label);
+        chipLabel = malloc(len + 1);
+        if (chipLabel == NULL) {
+            gpiod_chip_info_free(chipInfo);
+            return NULL;
+        }
+        strcpy(chipLabel, label);
+        chipLabel[len] = '\0';
+    } else {
+        chipLabel = NULL;
+        label = NULL;
+    }
     gpiod_chip_info_free(chipInfo);
     #endif
 
@@ -66,17 +84,27 @@ napi_value detectChip(napi_env env, napi_callback_info info) {
 
                 chip = gpiod_chip_open(path);
                 if(chip == NULL) {
+                    free(path);
                     continue;
                 }
 
                 chipLabel = getChipLabel(chip);
                 if(regexec(&regex, chipLabel, 0, NULL, 0) == 0) {
-
                     napi_create_external(env, chip, NULL, NULL, &nvChipPtr);
+                    free(path);
+                    free(chipLabel);
+                    regfree(&regex);
+                    closedir(dirp);
                     return nvChipPtr;
+                } else {
+                    gpiod_chip_close(chip);
+                    free(path);
+                    free(chipLabel);
                 }
             }
         }
+        regfree(&regex);
+        closedir(dirp);
     }
 
     napi_throw_error(env, "ENOENT", "No chip detected.");
@@ -274,6 +302,10 @@ napi_value configureLine(napi_env env, napi_callback_info info) {
 
         gpiod_line_config_add_line_settings(lineConfig, (const unsigned int *)&offset, 1, lineSettings);
         gpiod_line_request_reconfigure_lines(lineRequest, lineConfig);
+
+        gpiod_line_info_free(lineInfo);
+        gpiod_line_settings_free(lineSettings);
+        gpiod_line_config_free(lineConfig);
     #endif
 
     napi_value result;
@@ -322,6 +354,9 @@ napi_value getLine(napi_env env, napi_callback_info info) {
         napi_create_uint32(env, (uintptr_t)lineRequest, &result);
         #endif
 
+        gpiod_line_settings_free(lineSettings);
+        gpiod_line_config_free(lineConfig);
+        gpiod_request_config_free(requestConfig);
         return result;
     #endif
 }
@@ -340,11 +375,14 @@ napi_value setLineValue(napi_env env, napi_callback_info info) {
     #else
     napi_get_value_uint32(env, args[0], &linePtr);
     #endif
+    
+    napi_value result;
 
     #if GPIOD_MAJOR == 1
         struct gpiod_line *line;
         line = (struct gpiod_line*)linePtr;
         int status = gpiod_line_set_value (line, value);
+        napi_create_int32(env, status, &result);
 
     #elif GPIOD_MAJOR == 2
         struct gpiod_line_request* lineRequest;
@@ -354,10 +392,10 @@ napi_value setLineValue(napi_env env, napi_callback_info info) {
         unsigned int *offsets = malloc(sizeof(int) * numLines);
         gpiod_line_request_get_requested_offsets(lineRequest, offsets, numLines);
         int status = gpiod_line_request_set_value(lineRequest, offsets[0], value);
+        napi_create_int32(env, status, &result);
+        free(offsets);
     #endif
-
-    napi_value result;
-    napi_create_int32(env, status, &result);
+    
     return result;
 }
 
@@ -374,12 +412,15 @@ napi_value getLineValue(napi_env env, napi_callback_info info) {
     napi_get_value_uint32(env, args[0], &linePtr);
     #endif
 
+    napi_value result;
+
     #if GPIOD_MAJOR == 1
         struct gpiod_line *line;
         line = (struct gpiod_line*)linePtr;
         napi_get_value_external(env, args[0], (void**)&line);
         gpiod_line_active_state(line);
         int status = gpiod_line_get_value (line);
+        napi_create_int32(env, status, &result);
 
     #elif GPIOD_MAJOR == 2
         struct gpiod_line_request* lineRequest;
@@ -389,10 +430,10 @@ napi_value getLineValue(napi_env env, napi_callback_info info) {
         unsigned int *offsets = malloc(sizeof(int) * numLines);
         gpiod_line_request_get_requested_offsets(lineRequest, offsets, numLines);
         int status = gpiod_line_request_get_value(lineRequest, offsets[0]);
+        napi_create_int32(env, status, &result);
+        free(offsets);
     #endif
 
-    napi_value result;
-    napi_create_int32(env, status, &result);
     return result;
 }
 
