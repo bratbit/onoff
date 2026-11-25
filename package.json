@@ -1,5 +1,5 @@
 {
-  "name": "@bratbit/onoff",
+  "name": "@fliegenklatsch/onoff",
   "version": "1.0.7",
   "description": "",
   "main": "dist/cjs/index.js",
@@ -36,11 +36,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/bratbit/onoff.git"
+    "url": "https://github.com/FliegenKLATSCH/onoff.git"
   },
-  "homepage": "https://github.com/bratbit/onoff",
+  "homepage": "https://github.com/FliegenKLATSCH/onoff",
   "bugs": {
-    "url": "https://github.com/bratbit/onoff"
+    "url": "https://github.com/FliegenKLATSCH/onoff/issues"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   },
   "license": "MIT"
 }
