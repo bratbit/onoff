@@ -126,7 +126,7 @@ type BinaryValue = High | Low;
 >`activeLow`
 >If set to `true`, configure the line to have its logical state inversed from the physical state. Default is `false`.
 >`debounceTimeout`
->When listening to events, they will be debounced for the ammount of milliseconds specified here. Default is `0`.
+>Requests kernel debounce for the specified number of milliseconds. Default is `0` (disabled). Configuration fails if the kernel or GPIO controller cannot apply it.
 >`reconfigureDirection`
 >If set to `false` the line will be opened *as-is* without reconfiguring it. Default is `false`.
 >`bias` can be configured as
@@ -267,40 +267,37 @@ Write a one second pulse to GPIO pin.
 #### Typescript
 ```ts
 import { Gpio } from '@bratbit/onoff';
-import { timer } from 'rxjs';
 
 let gpio13: Gpio = new Gpio(13, 'out');
 
 gpio13.writeSync(Gpio.HIGH);
-timer(1000).subscribe(() => {
+setTimeout(() => {
     gpio13.writeSync(Gpio.LOW)
-});
+}, 1000);
 ```
 
 #### ECMAScript
 ```js
 import { Gpio } from '@bratbit/onoff';
-import { timer } from 'rxjs';
 
 let gpio13 = new Gpio(13, 'out');
 
 gpio13.writeSync(Gpio.HIGH);
-timer(1000).subscribe(() => {
+setTimeout(() => {
     gpio13.writeSync(Gpio.LOW)
-});
+}, 1000);
 ```
 
 #### CommonJS
 ```js
 const { Gpio } = require('@bratbit/onoff');
-const { timer } = require('rxjs');
 
 let gpio13 = new Gpio(13, 'out');
 
 gpio13.writeSync(Gpio.HIGH);
-timer(1000).subscribe(() => {
+setTimeout(() => {
     gpio13.writeSync(Gpio.LOW)
-});
+}, 1000);
 ```
 
 ### Watching for interrupts
@@ -310,7 +307,6 @@ Listen for interrupts for 30 seconds and print the line value, when an interrupt
 #### Typescript
 ```ts
 import { Gpio, BinaryValue } from '@bratbit/onoff';
-import { timer } from 'rxjs';
 
 let gpio12: Gpio = new Gpio(12, 'in', 'both', {debounceTimeout: 300});
 
@@ -320,15 +316,14 @@ function handler (err: Error | null | undefined, value: BinaryValue): void {
 
 gpio12.watch(handler);
 
-timer(30000).subscribe(() => {
+setTimeout(() => {
     gpio12.unwatch(handler);
-});
+}, 30000);
 ```
 
 #### ECMAScript
 ```js
 import { Gpio } from '@bratbit/onoff';
-import { timer } from 'rxjs';
 
 let gpio12 = new Gpio(12, 'in', 'both', {debounceTimeout: 300});
 
@@ -338,15 +333,14 @@ function handler (err, value) {
 
 gpio12.watch(handler);
 
-timer(30000).subscribe(() => {
+setTimeout(() => {
     gpio12.unwatch(handler);
-});
+}, 30000);
 ```
 
 #### CommonJS
 ```js
 const { Gpio } = require('@bratbit/onoff');
-const { timer } = require('rxjs');
 
 let gpio12 = new Gpio(12, 'in', 'both', {debounceTimeout: 300});
 
@@ -356,7 +350,7 @@ function handler (err, value) {
 
 gpio12.watch(handler);
 
-timer(30000).subscribe(() => {
+setTimeout(() => {
     gpio12.unwatch(handler);
-});
+}, 30000);
 ```

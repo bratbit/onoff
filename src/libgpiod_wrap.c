@@ -7,6 +7,7 @@
 #include <dirent.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
 
 char* getChipPath(char* chipName) {
     char* devPath = "/dev/";
@@ -232,11 +233,16 @@ napi_value configureLine(napi_env env, napi_callback_info info) {
         struct gpiod_line_config *lineConfig = gpiod_line_config_new();
 
         gpiod_line_config_add_line_settings(lineConfig, (const unsigned int *)&offset, 1, lineSettings);
-        gpiod_line_request_reconfigure_lines(lineRequest, lineConfig);
+        int status = gpiod_line_request_reconfigure_lines(lineRequest, lineConfig);
+        int savedErrno = errno;
 
         gpiod_line_info_free(lineInfo);
         gpiod_line_settings_free(lineSettings);
         gpiod_line_config_free(lineConfig);
+        if (status < 0) {
+            napi_throw_error(env, NULL, strerror(savedErrno));
+            return NULL;
+        }
     napi_value result;
     napi_create_int32(env, 0, &result);
     return result;

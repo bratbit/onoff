@@ -2,7 +2,6 @@ import bindings from 'bindings';
 import { Worker } from 'worker_threads';
 import { dn } from './dirname.js';
 const gpiod = bindings({ bindings: 'gpiod-wrap', module_root: `${dn}/../..` });
-import { fromEvent, debounceTime, type Subscription } from 'rxjs';
 
 export type High = 1;
 export type Low = 0;
@@ -37,7 +36,6 @@ export class Gpio {
     private _edge: Edge;
     private _watchers: Array<ValueCallback>;
     private _worker: Worker | undefined;
-    private _interruptSubscription: Subscription | undefined;
 
     public detectChip() {
         return gpiod.detectChip(Gpio._chipRegex);
@@ -138,7 +136,7 @@ export class Gpio {
 
     public setDirection(direction: Direction): void {
         this._direction = direction;
-        gpiod.configureLine(this._line, this._gpio, this._direction, this._edge, this._options);
+        gpiod.configureLine(this._chip, this._line, this._gpio, this._direction, this._edge, this._options);
     }
 
     public edge(): Edge {
@@ -147,7 +145,7 @@ export class Gpio {
 
     public setEdge(edge: Edge): void {
         this._edge = edge;
-        gpiod.configureLine(this._line, this._gpio, this._direction, this._edge, this._options);
+        gpiod.configureLine(this._chip, this._line, this._gpio, this._direction, this._edge, this._options);
     }
 
     public bias(): Bias {
@@ -156,23 +154,20 @@ export class Gpio {
 
     public setBias(bias: Bias): void {
         this._options.bias = bias;
-        gpiod.configureLine(this._line, this._gpio, this._direction, this._edge, this._options);
+        gpiod.configureLine(this._chip, this._line, this._gpio, this._direction, this._edge, this._options);
     }
 
-    public activeLow(): boolean {
+    public isActiveLow(): boolean {
         return (this._options.activeLow as boolean);
     }
 
     public setActiveLow(invert: boolean): void {
         this._options.activeLow = invert;
-        gpiod.configureLine(this._line, this._gpio, this._direction, this._edge, this._options);
+        gpiod.configureLine(this._chip, this._line, this._gpio, this._direction, this._edge, this._options);
     }
 
     private startInterruptHandler(): void {
         if (!this._worker) {
-            if (typeof this._options.debounceTimeout !== 'number') {
-                this._options.debounceTimeout = 0;
-            }
             this._worker = new Worker(`${dn}/event_watcher.js`, {
                 workerData: this._line,
                 resourceLimits: { maxOldGenerationSizeMb: 32 }
@@ -180,10 +175,7 @@ export class Gpio {
             this._worker.on('error', (err) => {
                 console.error('[onoff] Worker error:', err.message || err);
             });
-            const interrupts = fromEvent(this._worker, 'message');
-            this._interruptSubscription = interrupts.pipe(
-                debounceTime(this._options.debounceTimeout)
-            ).subscribe((value: any) => {
+            this._worker.on('message', (value: BinaryValue) => {
                 this._watchers.forEach((watcher) => {
                     watcher(null, value);
                 });
@@ -192,11 +184,8 @@ export class Gpio {
     }
 
     private stopInterruptHandler(): void {
-        if (this._interruptSubscription) {
-            this._interruptSubscription.unsubscribe();
-            this._interruptSubscription = undefined;
-        }
         if (this._worker) {
+            this._worker.removeAllListeners('message');
             this._worker.terminate();
             this._worker = undefined;
         }
