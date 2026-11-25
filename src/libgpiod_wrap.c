@@ -464,7 +464,7 @@ napi_value waitForEvent(napi_env env, napi_callback_info info) {
         }
 
     #elif GPIOD_MAJOR == 2
-        int64_t timeout_ns = 1000000;
+        int64_t timeout_ns = 1000000000; // 1 sec
         struct gpiod_line_request* lineRequest;
         lineRequest = (struct gpiod_line_request*)linePtr;
         int status = gpiod_line_request_wait_edge_events(lineRequest, timeout_ns);
