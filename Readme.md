@@ -10,6 +10,8 @@ The package strives to offer an API compatible to that of [fivdi/onoff](https://
 
 ### Dependencies
 
+libgpiod v2 and its development headers are required; libgpiod v1 is not supported.
+
 #### Raspberry Pi OS
 ```
 apt install build-essential libgpiod3 libgpiod-dev

@@ -27,10 +27,6 @@ char* getChipLabel(struct gpiod_chip* chip) {
     char * chipLabel = NULL;
     char *label = NULL;
 
-    #if GPIOD_MAJOR == 1
-    chipLabel = (char *) gpiod_chip_label(chip);
-
-    #elif GPIOD_MAJOR == 2
     struct gpiod_chip_info* chipInfo;
 
     chipInfo = gpiod_chip_get_info(chip);
@@ -49,8 +45,6 @@ char* getChipLabel(struct gpiod_chip* chip) {
         label = NULL;
     }
     gpiod_chip_info_free(chipInfo);
-    #endif
-
     return chipLabel;
 }
 
@@ -115,23 +109,6 @@ napi_value detectChip(napi_env env, napi_callback_info info) {
 
 
 //configure direction
-#if GPIOD_MAJOR == 1
-void configureDirection(const char* direction, struct gpiod_line_request_config* config, int* defaultValue) {
-    if(strncmp("out", direction, strlen("out")) == 0) {
-        config->request_type = GPIOD_LINE_REQUEST_DIRECTION_OUTPUT;
-    } else if(strncmp("in", direction, strlen("in")) == 0) {
-        config->request_type = GPIOD_LINE_REQUEST_DIRECTION_INPUT;
-    } else if(strncmp("high", direction, strlen("high")) == 0) {
-        config->request_type = GPIOD_LINE_REQUEST_DIRECTION_OUTPUT;
-        *defaultValue = 1;
-    } else if(strncmp("low", direction, strlen("low")) == 0) {
-        config->request_type = GPIOD_LINE_REQUEST_DIRECTION_OUTPUT;
-        *defaultValue = 0;
-    } else if(strncmp("as-is", direction, strlen("as-is")) == 0) {
-        config->request_type = GPIOD_LINE_REQUEST_DIRECTION_AS_IS;
-    }
-}
-#elif GPIOD_MAJOR == 2
 void configureDirection(const char* direction, struct gpiod_line_settings* lineSettings) {
     if(strncmp("out", direction, strlen("out")) == 0) {
         gpiod_line_settings_set_direction(lineSettings, GPIOD_LINE_DIRECTION_OUTPUT);
@@ -147,33 +124,7 @@ void configureDirection(const char* direction, struct gpiod_line_settings* lineS
         gpiod_line_settings_set_direction(lineSettings, GPIOD_LINE_DIRECTION_AS_IS);
     }
 }
-#endif
-
-//configure active low
-#if GPIOD_MAJOR == 1
-void configureActiveLow(bool activeLow, struct gpiod_line_request_config* config) {
-    if(activeLow) {
-        config->flags = GPIOD_LINE_REQUEST_FLAG_ACTIVE_LOW;
-    } else {
-        config->flags = 0;
-    }
-}
-#endif
-
 //configure edge
-#if GPIOD_MAJOR == 1
-void configureEdge(const char* edge, struct gpiod_line_request_config* config) {
-    if(strncmp("none", edge, strlen("none")) == 0) {
-        config->request_type = GPIOD_LINE_REQUEST_DIRECTION_OUTPUT;
-    } else if(strncmp("rising", edge, strlen("rising")) == 0) {
-        config->request_type = GPIOD_LINE_REQUEST_EVENT_RISING_EDGE;
-    } else if(strncmp("falling", edge, strlen("falling")) == 0) {
-        config->request_type = GPIOD_LINE_REQUEST_EVENT_FALLING_EDGE;
-    } else if(strncmp("both", edge, strlen("both")) == 0) {
-        config->request_type = GPIOD_LINE_REQUEST_EVENT_BOTH_EDGES;
-    }
-}
-#elif GPIOD_MAJOR == 2
 void configureEdge(const char* edge, struct gpiod_line_settings* lineSettings) {
     if(strncmp("none", edge, strlen("none")) == 0) {
         gpiod_line_settings_set_edge_detection(lineSettings, GPIOD_LINE_EDGE_NONE);
@@ -185,8 +136,6 @@ void configureEdge(const char* edge, struct gpiod_line_settings* lineSettings) {
         gpiod_line_settings_set_edge_detection(lineSettings, GPIOD_LINE_EDGE_BOTH);
     }
 }
-#endif
-
 //configure line
 napi_value configureLine(napi_env env, napi_callback_info info) {
     size_t argc = 6;
@@ -196,11 +145,7 @@ napi_value configureLine(napi_env env, napi_callback_info info) {
     struct gpiod_chip* chip;
     napi_get_value_external(env, args[0], (void**)&chip);
 
-    #if GPIOD_MAJOR == 1
-    struct gpiod_line* line;
-    #elif GPIOD_MAJOR == 2
     struct gpiod_line_request* lineRequest;
-    #endif
 
     uintptr_t linePtr;
     #if UINTPTR_MAX == UINT64_MAX
@@ -210,11 +155,7 @@ napi_value configureLine(napi_env env, napi_callback_info info) {
     napi_get_value_uint32(env, args[1], &linePtr);
     #endif
 
-    #if GPIOD_MAJOR == 1
-    line = (struct gpiod_line*)linePtr;
-    #elif GPIOD_MAJOR == 2
     lineRequest = (struct gpiod_line_request*)linePtr;
-    #endif
 
     int offset;
     napi_get_value_int32(env, args[2], &offset);
@@ -237,32 +178,6 @@ napi_value configureLine(napi_env env, napi_callback_info info) {
     napi_get_named_property(env, args[5], "reconfigureDirection",  &napiReconfigureDirection);
     napi_get_value_bool(env, napiReconfigureDirection, &reconfigureDirection);
 
-    #if GPIOD_MAJOR == 1
-        struct gpiod_line_request_config config;
-        int defaultValue = 0;
-        config.consumer = "onoff";
-
-        int currentDirection;
-        currentDirection = gpiod_line_direction(line);
-
-        configureActiveLow(activeLow, &config);
-        if((strncmp("none", edge, strlen("none")) != 0) && (strncmp("in", direction, strlen("in")) == 0)) {
-            configureEdge(edge, &config);
-        } else {
-            if((currentDirection == GPIOD_LINE_DIRECTION_OUTPUT) && (strncmp("in", direction, strlen("in")) != 0) && (reconfigureDirection == false)) {
-                configureDirection("as-is", &config, NULL);
-            } else {
-                configureDirection(direction, &config, &defaultValue);
-            }
-        }
-
-        gpiod_line_release(line);
-        int lineConfigStatus = gpiod_line_request(line, &config, defaultValue);
-        if(lineConfigStatus != 0) {
-            napi_throw_error(env, "EIO", "Line request failed");
-        }
-
-    #elif GPIOD_MAJOR == 2
         struct gpiod_line_settings* lineSettings = gpiod_line_settings_new();
         gpiod_line_settings_set_active_low(lineSettings, activeLow);
 
@@ -322,8 +237,6 @@ napi_value configureLine(napi_env env, napi_callback_info info) {
         gpiod_line_info_free(lineInfo);
         gpiod_line_settings_free(lineSettings);
         gpiod_line_config_free(lineConfig);
-    #endif
-
     napi_value result;
     napi_create_int32(env, 0, &result);
     return result;
@@ -340,19 +253,6 @@ napi_value getLine(napi_env env, napi_callback_info info) {
     int offset;
     napi_get_value_int32(env, args[1], &offset);
 
-    #if GPIOD_MAJOR == 1
-        struct gpiod_line *line;
-        line = gpiod_chip_get_line(chip, offset);
-
-        napi_value result;
-        #if UINTPTR_MAX == UINT64_MAX
-        napi_create_bigint_uint64(env, (uintptr_t)line, &result);
-        #else
-        napi_create_uint32(env, (uintptr_t)line, &result);
-        #endif
-
-        return result;
-    #elif GPIOD_MAJOR == 2
         struct gpiod_line_settings* lineSettings;
         lineSettings = gpiod_line_settings_new();
         gpiod_line_settings_set_direction(lineSettings, GPIOD_LINE_DIRECTION_AS_IS);
@@ -374,7 +274,6 @@ napi_value getLine(napi_env env, napi_callback_info info) {
         gpiod_line_config_free(lineConfig);
         gpiod_request_config_free(requestConfig);
         return result;
-    #endif
 }
 
 napi_value setLineValue(napi_env env, napi_callback_info info) {
@@ -394,13 +293,6 @@ napi_value setLineValue(napi_env env, napi_callback_info info) {
     
     napi_value result;
 
-    #if GPIOD_MAJOR == 1
-        struct gpiod_line *line;
-        line = (struct gpiod_line*)linePtr;
-        int status = gpiod_line_set_value (line, value);
-        napi_create_int32(env, status, &result);
-
-    #elif GPIOD_MAJOR == 2
         struct gpiod_line_request* lineRequest;
         lineRequest = (struct gpiod_line_request*)linePtr;
 
@@ -410,7 +302,6 @@ napi_value setLineValue(napi_env env, napi_callback_info info) {
         int status = gpiod_line_request_set_value(lineRequest, offsets[0], value);
         napi_create_int32(env, status, &result);
         free(offsets);
-    #endif
     
     return result;
 }
@@ -430,15 +321,6 @@ napi_value getLineValue(napi_env env, napi_callback_info info) {
 
     napi_value result;
 
-    #if GPIOD_MAJOR == 1
-        struct gpiod_line *line;
-        line = (struct gpiod_line*)linePtr;
-        napi_get_value_external(env, args[0], (void**)&line);
-        gpiod_line_active_state(line);
-        int status = gpiod_line_get_value (line);
-        napi_create_int32(env, status, &result);
-
-    #elif GPIOD_MAJOR == 2
         struct gpiod_line_request* lineRequest;
         lineRequest = (struct gpiod_line_request*)linePtr;
 
@@ -448,7 +330,6 @@ napi_value getLineValue(napi_env env, napi_callback_info info) {
         int status = gpiod_line_request_get_value(lineRequest, offsets[0]);
         napi_create_int32(env, status, &result);
         free(offsets);
-    #endif
 
     return result;
 }
@@ -466,20 +347,6 @@ napi_value waitForEvent(napi_env env, napi_callback_info info) {
     napi_get_value_uint32(env, args[0], &linePtr);
     #endif
 
-    #if GPIOD_MAJOR == 1
-        struct gpiod_line *line;
-        struct timespec timeout;
-        timeout.tv_sec = 1;
-        timeout.tv_nsec = 0;
-        line = (struct gpiod_line*)linePtr;
-        int status = gpiod_line_event_wait(line, &timeout);
-
-        if(status > 0) {
-            struct gpiod_line_event event;
-            gpiod_line_event_read(line, &event);
-        }
-
-    #elif GPIOD_MAJOR == 2
         int64_t timeout_ns = 1000000000; // 1 sec
         struct gpiod_line_request* lineRequest;
         lineRequest = (struct gpiod_line_request*)linePtr;
@@ -490,8 +357,6 @@ napi_value waitForEvent(napi_env env, napi_callback_info info) {
             gpiod_line_request_read_edge_events(lineRequest, buffer, 1);
             gpiod_edge_event_buffer_free(buffer);
         }
-    #endif
-
     napi_value result;
     napi_create_int32(env, status, &result);
     return result;
