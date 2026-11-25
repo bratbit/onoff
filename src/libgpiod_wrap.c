@@ -266,6 +266,22 @@ napi_value configureLine(napi_env env, napi_callback_info info) {
         struct gpiod_line_settings* lineSettings = gpiod_line_settings_new();
         gpiod_line_settings_set_active_low(lineSettings, activeLow);
 
+        napi_value napiDebounceTimeout;
+        double debounceTimeout;
+        bool hasDebounceTimeout = false;
+        napi_has_named_property(env, args[5], "debounceTimeout", &hasDebounceTimeout);
+        if (hasDebounceTimeout &&
+            napi_get_named_property(env, args[5], "debounceTimeout", &napiDebounceTimeout) == napi_ok &&
+            napi_get_value_double(env, napiDebounceTimeout, &debounceTimeout) == napi_ok &&
+            debounceTimeout > 0) {
+            if (debounceTimeout > UINT32_MAX / 1000.0) {
+                gpiod_line_settings_free(lineSettings);
+                napi_throw_range_error(env, NULL, "debounceTimeout is too large");
+                return NULL;
+            }
+            gpiod_line_settings_set_debounce_period_us(lineSettings, (unsigned long)(debounceTimeout * 1000));
+        }
+
         napi_value napiBias;
         char bias[16];
         size_t biasLength;
